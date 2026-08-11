@@ -14,6 +14,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         armas_analisis = str(fila.get('analisis_armas', '')).strip().upper()
         lugar_analisis = str(fila.get('analisis_lugar', '')).strip().upper()
         
+        # 1. Validación de Coordenadas
         lat = fila.get('analisis_coordenadas', None)
         if pd.isna(lat) or str(lat).strip() == "":
             lat = fila.get('latitud', None)
@@ -33,6 +34,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         else:
             return "ERROR: Falta registrar coordenadas"
 
+        # 2. Excepciones para carátulas descartables
         caratulas_descartables = ['LESIONES LEVES', 'LESIONES CULPOSAS', 'AVERIGUACION DE PARADERO', 'DAÑOS', 'INCENDIO', 'ESTRAGO', 'VIOLACION DE DOMICILIO']
         es_descartable = any(item in caratula_cruda for item in caratulas_descartables)
         analisis_vacio = pd.isna(fila.get('analisis_caratula')) or caratula_analisis == "" or caratula_analisis == "NAN"
@@ -47,10 +49,22 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         if analisis_vacio:
             return "ERROR: Falta completar la carátula analizada"
 
+        # 3. Control de Lugar (Vía pública vs Domicilio/Comercio)
         menciona_casa_o_finca = any(term in relato for term in ["EN SU DOMICILIO", "INTERIOR DE SU DOMICILIO", "CASA", "DEPARTAMENTO", "FRENTE A SU DOMICILIO", "PATIO", "LOCAL", "COMERCIO"])
         if menciona_casa_o_finca and "VIA PUBLICA" in lugar_analisis:
             return "ALERTA: El relato indica lugar cerrado/domicilio/comercio pero se cargó Vía Pública"
 
+        # 3.1. REGLA ESTRICTA DE DIFERENCIACIÓN: Comercio vs Finca
+        menciona_comercio = any(term in relato for term in ["LOCAL", "COMERCIO", "NEGOCIO", "KIOSCO", "SUPERMERCADO", "FARMACIA", "LOCAL COMERCIAL"])
+        menciona_vivienda = any(term in relato for term in ["CASA", "DEPARTAMENTO", "VIVIENDA", "DOMICILIO PARTICULAR"])
+        
+        if menciona_comercio and ("FINCA" in caratula_analisis or "FINCA" in modalidad_analisis):
+            return "ALERTA: El relato menciona un comercio pero se tipificó como Finca"
+            
+        if menciona_vivienda and ("COMERCIO" in modalidad_analisis or "LOCAL" in modalidad_analisis):
+            return "ALERTA: El relato menciona una vivienda pero se tipificó como Comercio"
+
+        # 4. Reglas para Hurtos
         if "HURTO" in caratula_analisis:
             if "ROBA RUEDAS" in modalidad_analisis and not ("RUEDA" in relato or "NEUMATICO" in relato or "AUXILIO" in relato):
                 return "ALERTA: Modalidad Roba Ruedas pero el relato no menciona neumáticos"
@@ -61,6 +75,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         if "ESTUPEFACIENTES" in caratula_analisis:
             return "CORRECTO"
 
+        # 5. Validación estricta de Armas
         palabras_relato = re.findall(r'\b\w+\b', relato)
         menciona_arma_real = False
         if "ARMA" in palabras_relato or "ARMAS" in palabras_relato:
@@ -71,6 +86,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         if menciona_arma_real and not any(tipo in armas_analisis for tipo in tipos_armas_validos):
             return "ERROR: El relato menciona un arma real pero no se tipificó correctamente"
 
+        # 6. Robos y modalidades
         if "ROBO" in caratula_analisis:
             if "MOTOCHORRO" in modalidad_analisis and not ("MOTO" in relato or "MOTOCICLETA" in relato):
                 return "ALERTA: Modalidad Motochorro pero el relato no menciona moto"
@@ -78,7 +94,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
                 if not any(term in relato for term in ["FORZAR", "ROTURA", "CANDADO", "VENTANA", "PUERTA", "AUSENTES", "SIN MORADORES"]):
                     return "ALERTA: Modalidad Finca/Escruche pero el relato no menciona forzamiento o ausencia"
 
-        # Si la modalidad es LEVANTAMIENTO en vehículos, se aprueba directamente sin alertas de violencia por palabras sueltas
+        # 7. Sustracción Vehicular por Levantamiento
         if "SUSTRACCIÓN AUTOMOTOR" in caratula_analisis or "SUSTRACCION MOTOVEHICULO" in caratula_analisis:
             if "LEVANTAMIENTO" in modalidad_analisis:
                 return "CORRECTO"
