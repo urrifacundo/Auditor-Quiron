@@ -75,11 +75,14 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         if "ESTUPEFACIENTES" in caratula_analisis:
             return "CORRECTO"
 
-        # 5. Validación estricta de Armas
+        # 5. Validación estricta de Armas (Afinada para evitar falsos positivos)
         palabras_relato = re.findall(r'\b\w+\b', relato)
         menciona_arma_real = False
-        if "ARMA" in palabras_relato or "ARMAS" in palabras_relato:
-            if not any(neg in relato for neg in ["SIN ARMA", "NO PORTABA", "CARECE DE ARMA", "SIN EL EMPLEO DE ARMA"]):
+        
+        terminos_armas = ["PISTOLA", "REVOLVER", "ESCOPETA", "CUCHILLO", "NAVAJA", "AMENAZA CON ARMA", "ARMA DE FUEGO", "ARMA BLANCA"]
+        
+        if any(term in relato for term in terminos_armas) or ("ARMA" in palabras_relato and "SIN" not in relato and "NO" not in relato):
+            if not any(neg in relato for neg in ["SIN ARMA", "NO PORTABA", "CARECE DE ARMA", "SIN EL EMPLEO DE ARMA", "SIN EXHIBICION"]):
                 menciona_arma_real = True
 
         tipos_armas_validos = ['FUEGO', 'BLANCA', 'IMPROPIA']
