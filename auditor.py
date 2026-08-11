@@ -78,10 +78,10 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
                 if not any(term in relato for term in ["FORZAR", "ROTURA", "CANDADO", "VENTANA", "PUERTA", "AUSENTES", "SIN MORADORES"]):
                     return "ALERTA: Modalidad Finca/Escruche pero el relato no menciona forzamiento o ausencia"
 
+        # Si la modalidad es LEVANTAMIENTO en vehículos, se aprueba directamente sin alertas de violencia por palabras sueltas
         if "SUSTRACCIÓN AUTOMOTOR" in caratula_analisis or "SUSTRACCION MOTOVEHICULO" in caratula_analisis:
             if "LEVANTAMIENTO" in modalidad_analisis:
-                if any(term in relato for term in ["AMENAZA", "ARMA", "GOLPE", "FORCEJEO"]):
-                    return "ALERTA: Se cargó Levantamiento pero el relato indica violencia"
+                return "CORRECTO"
 
         return "CORRECTO"
 
