@@ -50,18 +50,18 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
             return "ERROR: Falta completar la carátula analizada"
 
         # 3. Control de Lugar (Vía pública vs Domicilio/Comercio)
-        menciona_casa_o_finca = any(term in relato for term in ["EN SU DOMICILIO", "INTERIOR DE SU DOMICILIO", "CASA", "DEPARTAMENTO", "FRENTE A SU DOMICILIO", "PATIO", "LOCAL", "COMERCIO"])
+        menciona_casa_o_finca = any(term in relato for term in ["EN SU DOMICILIO", "INTERIOR DE SU DOMICILIO", "CASA", "DEPARTAMENTO", "FRENTE A SU DOMICILIO", "PATIO"])
         if menciona_casa_o_finca and "VIA PUBLICA" in lugar_analisis:
-            return "ALERTA: El relato indica lugar cerrado/domicilio/comercio pero se cargó Vía Pública"
+            return "ALERTA: El relato indica lugar cerrado/domicilio pero se cargó Vía Pública"
 
-        # 3.1. REGLA ESTRICTA DE DIFERENCIACIÓN: Comercio vs Finca
-        menciona_comercio = any(term in relato for term in ["LOCAL", "COMERCIO", "NEGOCIO", "KIOSCO", "SUPERMERCADO", "FARMACIA", "LOCAL COMERCIAL"])
-        menciona_vivienda = any(term in relato for term in ["CASA", "DEPARTAMENTO", "VIVIENDA", "DOMICILIO PARTICULAR"])
+        # 3.1. REGLA AFINADA DE DIFERENCIACIÓN: Comercio vs Finca (Evita falsos positivos con palabras sueltas)
+        menciona_comercio_real = any(term in relato for term in ["LOCAL COMERCIAL", "SUPERMERCADO", "KIOSCO", "FARMACIA", "NEGOCIO COMERCIAL"])
+        menciona_vivienda_real = any(term in relato for term in ["CASA", "DEPARTAMENTO", "VIVIENDA", "DOMICILIO PARTICULAR"])
         
-        if menciona_comercio and ("FINCA" in caratula_analisis or "FINCA" in modalidad_analisis):
+        if menciona_comercio_real and ("FINCA" in caratula_analisis or "FINCA" in modalidad_analisis):
             return "ALERTA: El relato menciona un comercio pero se tipificó como Finca"
             
-        if menciona_vivienda and ("COMERCIO" in modalidad_analisis or "LOCAL" in modalidad_analisis):
+        if menciona_vivienda_real and ("COMERCIO" in modalidad_analisis or "LOCAL" in modalidad_analisis):
             return "ALERTA: El relato menciona una vivienda pero se tipificó como Comercio"
 
         # 4. Reglas para Hurtos
@@ -75,7 +75,7 @@ def ejecutar_auditoria(ruta_archivo_entrada, ruta_archivo_salida):
         if "ESTUPEFACIENTES" in caratula_analisis:
             return "CORRECTO"
 
-        # 5. Validación estricta de Armas (Afinada para evitar falsos positivos)
+        # 5. Validación estricta de Armas
         palabras_relato = re.findall(r'\b\w+\b', relato)
         menciona_arma_real = False
         
